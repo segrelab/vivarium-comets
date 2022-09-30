@@ -1,2 +1,4 @@
 .idea/.ipynb_checkpoints/
 out/
+.current_*
+.ipynb_checkpoints/
