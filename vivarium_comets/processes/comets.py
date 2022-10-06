@@ -7,16 +7,27 @@ TODO: Replace the template code to implement your own process.
 import os
 import pytest
 
+import matplotlib.pyplot as plt
+import cometspy as c
+import cobra.test
+
 from vivarium.core.process import Process
 from vivarium.core.composition import (
     simulate_process,
     PROCESS_OUT_DIR,
 )
-from vivarium.plots.simulation_output import plot_simulation_output
+
+# Process, Deriver, and Composer base classes
+from vivarium.core.process import Process, Deriver
+from vivarium.core.composer import Composer
+from vivarium.core.registry import process_registry
+
+from vivarium.core.engine import Engine, pf
+from vivarium.library.units import units
 
 
 # a global NAME is used for the output directory and for the process name
-NAME = 'template'
+NAME = 'comets'
 
 
 class Comets(Process):
@@ -176,18 +187,25 @@ def test_comets_process():
 def main():
     # TODO: Update
     '''Simulate the process and plot results.'''
-    # make an output directory to save plots
+    # Make an output directory to save plots
     out_dir = os.path.join(PROCESS_OUT_DIR, NAME)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    output = run_template_process()
+    comets_exp = run_comets_process()
 
-    # plot the simulation output
-    plot_settings = {}
-    plot_simulation_output(output, plot_settings, out_dir)
+    # retrieve the data as a timeseries
+    comets_output = comets_exp.emitter.get_timeseries()
+
+    # Plot the simulation output
+    plt.plot(comets_output['time'], comets_output['Biomass']['ecoli_biomass'])
+    plt.savefig('biomass.png')
+
+    plt.plot(comets_output['time'], comets_output['Metabolites']['glc__D_e'], label = "glucose")
+    plt.legend()
+    plt.savefig('media.png')
 
 
-# run module with python template/processes/template_process.py
+# run module with python vivarium_comets/processes/comets.py
 if __name__ == '__main__':
     main()
