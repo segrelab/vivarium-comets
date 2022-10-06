@@ -5,6 +5,7 @@ TODO: Replace the template code to implement your own process.
 '''
 
 import os
+import pytest
 
 from vivarium.core.process import Process
 from vivarium.core.composition import (
@@ -94,6 +95,7 @@ class Comets(Process):
         sim_params.set_param('maxSpaceBiomass', 10)
         sim_params.set_param('minSpaceBiomass', 1e-11)
         sim_params.set_param('writeMediaLog', True)
+        sim_params.set_param('MediaLogRate', 1)
 
         # Define an experiment
         experiment = c.comets(test_tube, sim_params)
@@ -104,7 +106,11 @@ class Comets(Process):
         
         # Get the next biomass and metabolites from the COMETS run
         next_biomass = experiment.total_biomass['e_coli_core'][1]
-        next_metabolite = experiment.media.copy()
+
+        media = experiment.media.copy()
+        print(media)
+        most_recent_media = media.loc[media['cycle'] == media['cycle'].max()]
+        next_metabolite = most_recent_media.set_index('metabolite').to_dict()['conc_mmol']
         print(next_metabolite)
         
         return {
@@ -116,46 +122,59 @@ class Comets(Process):
 
 
 # functions to configure and run the process
-def run_template_process():
-    '''Run a simulation of the process.
+def run_comets_process():
+    '''Run a the COMETS wrapper for 10 cycles (with timestep of 1.0) with just the E. coli model.
 
     Returns:
         The simulation output.
     '''
 
-    # initialize the process by passing in parameters
-    parameters = {}
-    template_process = Template(parameters)
+    # Set the settings
+    comets_config = {'time_step': 1.0, 'dimensions': [1,1]}
+    comets_sim_settings = {
+        'experiment_id': 'foo'}
 
-    # declare the initial state, mirroring the ports structure
-    initial_state = {
-        'internal': {
-            'A': 0.0
-        },
-        'external': {
-            'A': 1.0
-        },
+    # Declare the initial state, mirroring the ports structure
+    comets_initial_state = {
+        'Biomass': {'ecoli_biomass': 0.000005},
+        'Metabolites': {'glc__D_e': 0.011,
+                        'o2_e': 1000,
+                        'nh4_e': 1000,
+                        'pi_e': 1000,
+                        'h2o_e': 1000,
+                        'h_e': 1000
+                    }
     }
 
-    # run the simulation
-    sim_settings = {
-        'total_time': 10,
-        'initial_state': initial_state}
-    output = simulate_process(template_process, sim_settings)
+    # Initialize the process
+    comets_process = Comets(comets_config)
 
-    return output
+    # Make the experiment
+    comets_exp = Engine(processes={'comets': comets_process},
+                    topology={
+                        'comets': {'Biomass': ('Biomass',),
+                                   'Metabolites': ('Metabolites',)}},
+                   initial_state = comets_initial_state)
+
+    # Run the simulation
+    comets_exp.update(10.0)
+
+    return comets_exp
 
 
-def test_template_process():
-    '''Test that the process runs correctly.
+def test_comets_process():
+    '''Test that the COMETS wrapper process runs correctly.
 
     This will be executed by pytest.
     '''
-    output = run_template_process()
-    # TODO: Add assert statements to ensure correct performance.
+    comets_exp = run_comets_process()
+
+    # Check that the experiment has the expected results
+    pass
 
 
 def main():
+    # TODO: Update
     '''Simulate the process and plot results.'''
     # make an output directory to save plots
     out_dir = os.path.join(PROCESS_OUT_DIR, NAME)
