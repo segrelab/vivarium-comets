@@ -155,7 +155,7 @@ def run_comets_process():
     e_coli_cobra = cobra.io.load_model('textbook')
     
     # Set the settings
-    comets_config = {'time_step': 1.0,
+    comets_config = {'time_step': 0.01,
                      'dimensions': [1,1],
                      'metabolite_ids': [met.id for met in e_coli_cobra.metabolites]}
     comets_sim_settings = {
