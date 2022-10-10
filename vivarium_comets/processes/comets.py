@@ -33,7 +33,8 @@ NAME = 'comets'
 class Comets(Process):
     
     defaults = {
-        'dimensions': [1,1]
+        'dimensions': [1,1],
+        'metabolite_ids': []
     }
 
     def __init__(self, parameters=None):
@@ -51,14 +52,13 @@ class Comets(Process):
                     '_updater': 'set', # Use set, since we are not returning the delta but the new value
                     '_emit': True}},
             
-            # Use dictionary comprehension to declare schema for all the metabolites
+            # Use dictionary comprehension to declare schema for all the metabolites listed in the initial state
             'Metabolites': {
-#                 'metabolite_dictionary': {
-                '*': {
+                mol_id: {
                     '_default': 0.0,
                     '_updater': 'set',
                     '_emit': True
-                }
+                } for mol_id in self.parameters['metabolite_ids']
             }
         }
     
@@ -66,6 +66,8 @@ class Comets(Process):
         # Parse variables from states
         biomass = states['Biomass']['ecoli_biomass']
         metabolites = states['Metabolites']
+        
+        print(metabolites)
         
         # Run COMETS (need to use timestep somewhere in here)
         ##################################################################
@@ -139,9 +141,13 @@ def run_comets_process():
     Returns:
         The simulation output.
     '''
-
+    # Read in the cobra model and get the list of all the metabolites
+    e_coli_cobra = cobra.test.create_test_model('textbook')
+    
     # Set the settings
-    comets_config = {'time_step': 1.0, 'dimensions': [1,1]}
+    comets_config = {'time_step': 1.0,
+                     'dimensions': [1,1],
+                     'metabolite_ids': [met.id for met in e_coli_cobra.metabolites]}
     comets_sim_settings = {
         'experiment_id': 'foo'}
 
@@ -200,7 +206,9 @@ def main():
     # Plot the simulation output
     plt.plot(comets_output['time'], comets_output['Biomass']['ecoli_biomass'])
     plt.savefig('biomass.png')
-
+    
+    plt.clf()
+    
     plt.plot(comets_output['time'], comets_output['Metabolites']['glc__D_e'], label = "glucose")
     plt.legend()
     plt.savefig('media.png')
