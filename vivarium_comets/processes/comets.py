@@ -9,7 +9,7 @@ import pytest
 
 import matplotlib.pyplot as plt
 import cometspy as c
-import cobra.test
+import cobra.io
 
 from vivarium.core.process import Process
 from vivarium.core.composition import (
@@ -75,12 +75,13 @@ class Comets(Process):
         test_tube = c.layout()
         
         # Add all the metabolites
-        # Kludge- loop through all the metabolites and set specific
+        # Kludge- loop through all the metabolites and set specific, only if greater than 0
         for met_id in metabolites:
-            test_tube.set_specific_metabolite(met_id, metabolites[met_id])
+            if metabolites[met_id] > 0:
+                test_tube.set_specific_metabolite(met_id, metabolites[met_id])
         
         # Hard code loading the E coli model
-        e_coli_cobra = cobra.test.create_test_model('textbook')
+        e_coli_cobra = cobra.io.load_model('textbook')
         # Translate the cobra format into the comets format
         e_coli = c.model(e_coli_cobra)
 
@@ -142,7 +143,7 @@ def run_comets_process():
         The simulation output.
     '''
     # Read in the cobra model and get the list of all the metabolites
-    e_coli_cobra = cobra.test.create_test_model('textbook')
+    e_coli_cobra = cobra.io.load_model('textbook')
     
     # Set the settings
     comets_config = {'time_step': 1.0,
@@ -210,6 +211,9 @@ def main():
     plt.clf()
     
     plt.plot(comets_output['time'], comets_output['Metabolites']['glc__D_e'], label = "glucose")
+    plt.plot(comets_output['time'], comets_output['Metabolites']['ac_e'], label = "acetate")
+    plt.plot(comets_output['time'], comets_output['Metabolites']['etoh_e'], label = "ethanol")
+    plt.plot(comets_output['time'], comets_output['Metabolites']['for_e'], label = "formate")
     plt.legend()
     plt.savefig('media.png')
 
