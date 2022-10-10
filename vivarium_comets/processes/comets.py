@@ -49,6 +49,8 @@ class Comets(Process):
 
     def __init__(self, parameters=None):
         super().__init__(parameters)
+        # TODO: Remove any of the parameters that are not needed to start the simulation
+        # Do I need any more parameters? Should I do all of the parameters available in COMETSpy?
         dimensions = self.parameters['dimensions']
         models = self.parameters['models']
         self.model_ids = [model.id for model in models]
@@ -61,6 +63,8 @@ class Comets(Process):
         minSpaceBiomass = self.parameters['minSpaceBiomass']
         writeMediaLog = self.parameters['writeMediaLog']
         MediaLogRate = self.parameters['MediaLogRate']
+
+        # TODO: Start the COMETS simulation so that next update only needs to run one cycle
         
     def ports_schema(self):
         return {
@@ -112,6 +116,7 @@ class Comets(Process):
         
         # Hardcode the simulation parameters
         sim_params = c.params()
+        # TODO: Make this a loop?
         sim_params.set_param('defaultVmax', self.parameters['defaultVmax'])
         sim_params.set_param('defaultKm', self.parameters['defaultKm'])
         sim_params.set_param('maxCycles', self.parameters['maxCycles'])
