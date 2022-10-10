@@ -2,3 +2,7 @@
 out/
 .current_*
 .ipynb_checkpoints/
+
+# Intermediate COMETS files
+media_out_*
+total_biomass_out_*
