@@ -34,12 +34,30 @@ class Comets(Process):
     
     defaults = {
         'dimensions': [1,1],
-        'metabolite_ids': []
+        'metabolite_ids': [],
+        'defaultVmax': 18.5,
+        'defaultKm': 0.000015,
+        'maxCycles': 1,
+        'spaceWidth': 1,
+        'maxSpaceBiomass': 10,
+        'minSpaceBiomass': 1e-11,
+        'writeMediaLog': True,
+        'MediaLogRate': 1,
+
     }
 
     def __init__(self, parameters=None):
         super().__init__(parameters)
         dimensions = self.parameters['dimensions']
+        metabolite_ids = self.parameters['metabolite_ids']
+        defaultVmax = self.parameters['defaultVmax']
+        defaultKm = self.parameters['defaultKm']
+        maxCycles = self.parameters['maxCycles']
+        spaceWidth = self.parameters['spaceWidth']
+        maxSpaceBiomass = self.parameters['maxSpaceBiomass']
+        minSpaceBiomass = self.parameters['minSpaceBiomass']
+        writeMediaLog = self.parameters['writeMediaLog']
+        MediaLogRate = self.parameters['MediaLogRate']
         
     def ports_schema(self):
         return {
@@ -72,7 +90,7 @@ class Comets(Process):
         # Run COMETS (need to use timestep somewhere in here)
         ##################################################################
         # Create empty 1x1 layout
-        test_tube = c.layout()
+        test_tube = c.layout() # TODO: Actually use the dimensions parameter
         
         # Add all the metabolites
         # Kludge- loop through all the metabolites and set specific, only if greater than 0
@@ -80,7 +98,7 @@ class Comets(Process):
             if metabolites[met_id] > 0:
                 test_tube.set_specific_metabolite(met_id, metabolites[met_id])
         
-        # Hard code loading the E coli model
+        # Hard code loading the E coli model # FIXME
         e_coli_cobra = cobra.io.load_model('textbook')
         # Translate the cobra format into the comets format
         e_coli = c.model(e_coli_cobra)
@@ -101,15 +119,15 @@ class Comets(Process):
         
         # Hardcode the simulation parameters
         sim_params = c.params()
-        sim_params.set_param('defaultVmax', 18.5)
-        sim_params.set_param('defaultKm', 0.000015)
-        sim_params.set_param('maxCycles', 1)
+        sim_params.set_param('defaultVmax', self.parameters['defaultVmax'])
+        sim_params.set_param('defaultKm', self.parameters['defaultKm'])
+        sim_params.set_param('maxCycles', self.parameters['maxCycles'])
         sim_params.set_param('timeStep', timestep)
-        sim_params.set_param('spaceWidth', 1)
-        sim_params.set_param('maxSpaceBiomass', 10)
-        sim_params.set_param('minSpaceBiomass', 1e-11)
-        sim_params.set_param('writeMediaLog', True)
-        sim_params.set_param('MediaLogRate', 1)
+        sim_params.set_param('spaceWidth', self.parameters['spaceWidth'])
+        sim_params.set_param('maxSpaceBiomass', self.parameters['maxSpaceBiomass'])
+        sim_params.set_param('minSpaceBiomass', self.parameters['minSpaceBiomass'])
+        sim_params.set_param('writeMediaLog', self.parameters['writeMediaLog'])
+        sim_params.set_param('MediaLogRate', self.parameters['MediaLogRate'])
 
         # Define an experiment
         experiment = c.comets(test_tube, sim_params)
@@ -155,7 +173,7 @@ def run_comets_process():
     e_coli_cobra = cobra.io.load_model('textbook')
     
     # Set the settings
-    comets_config = {'time_step': 0.01,
+    comets_config = {'time_step': 1.0,
                      'dimensions': [1,1],
                      'metabolite_ids': [met.id for met in e_coli_cobra.metabolites]}
     comets_sim_settings = {
