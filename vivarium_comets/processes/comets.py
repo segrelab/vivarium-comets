@@ -34,6 +34,7 @@ class Comets(Process):
     
     defaults = {
         'dimensions': [1,1],
+        'models': [],
         'metabolite_ids': [],
         'defaultVmax': 18.5,
         'defaultKm': 0.000015,
@@ -49,6 +50,8 @@ class Comets(Process):
     def __init__(self, parameters=None):
         super().__init__(parameters)
         dimensions = self.parameters['dimensions']
+        models = self.parameters['models']
+        self.model_ids = [model.id for model in models]
         metabolite_ids = self.parameters['metabolite_ids']
         defaultVmax = self.parameters['defaultVmax']
         defaultKm = self.parameters['defaultKm']
@@ -64,11 +67,13 @@ class Comets(Process):
             # Declare a port for biomass
             'Biomass': {
                 # Define the variable that goees through that port
-                'ecoli_biomass': {
+                model_id: {
                     # Define how that variable operates
                     '_default': 0.0,
                     '_updater': 'set', # Use set, since we are not returning the delta but the new value
-                    '_emit': True}},
+                    '_emit': True
+                } for model_id in self.model_ids
+            },
             
             # Use dictionary comprehension to declare schema for all the metabolites listed in the initial state
             'Metabolites': {
@@ -82,7 +87,7 @@ class Comets(Process):
     
     def next_update(self, timestep, states):
         # Parse variables from states
-        biomass = states['Biomass']['ecoli_biomass']
+        biomass = states['Biomass']['e_coli_core']
         metabolites = states['Metabolites']
         
         print(metabolites)
@@ -97,25 +102,13 @@ class Comets(Process):
         for met_id in metabolites:
             if metabolites[met_id] > 0:
                 test_tube.set_specific_metabolite(met_id, metabolites[met_id])
-        
-        # Hard code loading the E coli model # FIXME
-        e_coli_cobra = cobra.io.load_model('textbook')
-        # Translate the cobra format into the comets format
-        e_coli = c.model(e_coli_cobra)
 
-        # remove the bounds from glucose import (will be set dynamically by COMETS)
-        # The bounds will be over written by the Michaelis-Menten kinetics
-        # By default the bounds are 0 and 1000, can cause problems
-        e_coli.change_bounds('EX_glc__D_e', -1000, 1000)
-        e_coli.change_bounds('EX_ac_e', -1000, 1000)
-        
-        # set the model's initial biomass
-        # First two numbers are the x & y coordinates of the COMETS 2D grid
-        # COMETS uses 0 indexing, so 0 0 is the first square
-        e_coli.initial_pop = [0, 0, biomass]
-
-        # add it to the test_tube
-        test_tube.add_model(e_coli)
+        # Set the models' initial biomass and add it to the layout
+        for model in self.parameters['models']:
+            # First two numbers are the x & y coordinates of the COMETS 2D grid
+            # COMETS uses 0 indexing, so 0 0 is the first square
+            model.initial_pop = [0, 0, biomass]
+            test_tube.add_model(model)
         
         # Hardcode the simulation parameters
         sim_params = c.params()
@@ -137,7 +130,7 @@ class Comets(Process):
         ##################################################################
         
         # Get the next biomass and metabolites from the COMETS run
-        next_biomass = experiment.total_biomass['e_coli_core'][1]
+        next_biomass = experiment.total_biomass['e_coli_core'][1] # FIXME: Don't hardocde the model name
 
         media = experiment.media.copy()
         print(media)
@@ -171,10 +164,21 @@ def run_comets_process():
     '''
     # Read in the cobra model and get the list of all the metabolites
     e_coli_cobra = cobra.io.load_model('textbook')
+
+    # Translate the cobra format into the comets format
+    # This is using COMETSpy outside of the process, is that okay?
+    e_coli = c.model(e_coli_cobra)
+
+    # remove the bounds from glucose import (will be set dynamically by COMETS)
+    # The bounds will be over written by the Michaelis-Menten kinetics
+    # By default the bounds are 0 and 1000, can cause problems
+    e_coli.change_bounds('EX_glc__D_e', -1000, 1000)
+    e_coli.change_bounds('EX_ac_e', -1000, 1000)
     
     # Set the settings
     comets_config = {'time_step': 1.0,
                      'dimensions': [1,1],
+                     'models': [e_coli],
                      'metabolite_ids': [met.id for met in e_coli_cobra.metabolites]}
     comets_sim_settings = {
         'experiment_id': 'foo'}
@@ -232,7 +236,7 @@ def main():
     comets_output = comets_exp.emitter.get_timeseries()
 
     # Plot the simulation output
-    plt.plot(comets_output['time'], comets_output['Biomass']['ecoli_biomass'])
+    plt.plot(comets_output['time'], comets_output['Biomass']['e_coli_core'])
     plt.savefig('biomass.png')
     
     plt.clf()
