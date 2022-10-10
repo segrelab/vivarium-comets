@@ -123,7 +123,16 @@ class Comets(Process):
 
         media = experiment.media.copy()
         print(media)
+        previous_media = media.loc[media['cycle'] == media['cycle'].max()-1]
         most_recent_media = media.loc[media['cycle'] == media['cycle'].max()]
+        # If a metabolite is not in the most recent media, but was in the previous media, set it to 0
+        # This is a kludge to deal with the fact that COMETS doesn't report metabolites that are not present
+        if len(most_recent_media) < len(previous_media): # FIXME: This won't always work if you have added and removed metabolites in the same timestep
+            # Get the metabolites that are in the previous media but not the most recent media
+            missing_metabolites = set(previous_media['metabolite']) - set(most_recent_media['metabolite'])
+            # Add rows for the missing metabolites
+            for met_id in missing_metabolites:
+                most_recent_media = most_recent_media.append({'metabolite': met_id, 'conc_mmol': 0}, ignore_index=True) #TODO: Need to make space explicit
         next_metabolite = most_recent_media.set_index('metabolite').to_dict()['conc_mmol']
         print(next_metabolite)
         
