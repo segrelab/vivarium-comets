@@ -4,6 +4,7 @@ Execute by running: ``python template/processes/template_process.py``
 TODO: Replace the template code to implement your own process.
 '''
 
+from functools import total_ordering
 import os
 import pytest
 
@@ -91,10 +92,8 @@ class Comets(Process):
     
     def next_update(self, timestep, states):
         # Parse variables from states
-        biomass = states['Biomass']['e_coli_core']
+        biomass = states['Biomass']
         metabolites = states['Metabolites']
-        
-        print(metabolites)
         
         # Run COMETS (need to use timestep somewhere in here)
         ##################################################################
@@ -111,7 +110,7 @@ class Comets(Process):
         for model in self.parameters['models']:
             # First two numbers are the x & y coordinates of the COMETS 2D grid
             # COMETS uses 0 indexing, so 0 0 is the first square
-            model.initial_pop = [0, 0, biomass]
+            model.initial_pop = [0, 0, biomass[model.id]]
             test_tube.add_model(model)
         
         # Hardcode the simulation parameters
@@ -135,7 +134,11 @@ class Comets(Process):
         ##################################################################
         
         # Get the next biomass and metabolites from the COMETS run
-        next_biomass = experiment.total_biomass['e_coli_core'][1] # FIXME: Don't hardocde the model name
+        total_biomass = experiment.total_biomass
+        current_biomass = total_biomass.loc[total_biomass['cycle'] == total_biomass['cycle'].max()].drop(['cycle'], axis=1).reset_index(drop=True)
+        next_biomass = {}
+        for col in current_biomass:
+            next_biomass[col] = current_biomass[col][0] # This assumes that there is only one row in the dataframe
         print(next_biomass)
 
         media = experiment.media.copy()
@@ -154,9 +157,7 @@ class Comets(Process):
         print(next_metabolite)
         
         return {
-            'Biomass': {
-                'e_coli_core': next_biomass
-            },
+            'Biomass': next_biomass,
             'Metabolites': next_metabolite
         }
 
