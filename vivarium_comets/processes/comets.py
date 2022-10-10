@@ -131,6 +131,7 @@ class Comets(Process):
         
         # Get the next biomass and metabolites from the COMETS run
         next_biomass = experiment.total_biomass['e_coli_core'][1] # FIXME: Don't hardocde the model name
+        print(next_biomass)
 
         media = experiment.media.copy()
         print(media)
@@ -149,7 +150,7 @@ class Comets(Process):
         
         return {
             'Biomass': {
-                'ecoli_biomass': next_biomass
+                'e_coli_core': next_biomass
             },
             'Metabolites': next_metabolite
         }
@@ -185,7 +186,7 @@ def run_comets_process():
 
     # Declare the initial state, mirroring the ports structure
     comets_initial_state = {
-        'Biomass': {'ecoli_biomass': 0.000005},
+        'Biomass': {'e_coli_core': 0.000005},
         'Metabolites': {'glc__D_e': 0.011,
                         'o2_e': 1000,
                         'nh4_e': 1000,
