@@ -72,46 +72,54 @@ class Comets(Process):
             # Declare a port for biomass
             'Biomass': {
                 # Define the variable that goees through that port
-                model_id: {
+                'biomass_grid': {
                     # Define how that variable operates
-                    '_default': 0.0,
+                    '_default': [],
                     '_updater': 'set', # Use set, since we are not returning the delta but the new value
                     '_emit': True
-                } for model_id in self.model_ids
+                }
             },
             
             # Use dictionary comprehension to declare schema for all the metabolites listed in the initial state
             'Metabolites': {
-                mol_id: {
-                    '_default': 0.0,
+                'metabolite_grid': {
+                    '_default': [],
                     '_updater': 'set',
                     '_emit': True
-                } for mol_id in self.parameters['metabolite_ids']
+                }
             }
         }
     
     def next_update(self, timestep, states):
         # Parse variables from states
-        biomass = states['Biomass']
-        metabolites = states['Metabolites']
+        biomass = states['Biomass']['biomass_grid']
+        metabolites = states['Metabolites']['metabolite_grid']
         
         # Run COMETS (need to use timestep somewhere in here)
         ##################################################################
-        # Create empty 1x1 layout
-        test_tube = c.layout() # TODO: Actually use the dimensions parameter
+        # Create empty layout from dimensions
+        layout = c.layout()
+        layout.grid = self.parameters.dimensions
         
         # Add all the metabolites
+        # FIXME: How to set the metabolites in a specific grid cell?
         # Kludge- loop through all the metabolites and set specific, only if greater than 0
         for met_id in metabolites:
             if metabolites[met_id] > 0:
-                test_tube.set_specific_metabolite(met_id, metabolites[met_id])
+                layout.set_specific_metabolite(met_id, metabolites[met_id])
 
         # Set the models' initial biomass and add it to the layout
         for model in self.parameters['models']:
-            # First two numbers are the x & y coordinates of the COMETS 2D grid
-            # COMETS uses 0 indexing, so 0 0 is the first square
-            model.initial_pop = [0, 0, biomass[model.id]]
-            test_tube.add_model(model)
+            # Loop thorugh the biomass grid and set the initial population for each grid cell
+            for i, row in enumerate(biomass):
+                # Flip the row index so that the bottom left is (0,0)
+                row_index = len(biomass) - i - 1
+                for j, cell in enumerate(row):
+                    # Set the initial biomass only if it is greater than 0
+                    if cell[model.id] > 0:
+                        model.initial_pop = (row_index, j, cell[model.id])
+            # Add the model to the layout
+            layout.add_model(model)
         
         # Hardcode the simulation parameters
         sim_params = c.params()
@@ -127,7 +135,7 @@ class Comets(Process):
         sim_params.set_param('MediaLogRate', self.parameters['MediaLogRate'])
 
         # Define an experiment
-        experiment = c.comets(test_tube, sim_params)
+        experiment = c.comets(layout, sim_params)
     
         # Run the simulation
         experiment.run()
@@ -214,6 +222,77 @@ def run_comets_process():
 
     # Run the simulation
     comets_exp.update(10.0)
+
+    return comets_exp
+
+
+# functions to configure and run the process
+def run_comets_process_2D():
+    '''Run a the COMETS wrapper for 10 cycles (with timestep of 1.0) with just the E. coli model in a heterogenous grid.
+
+    Returns:
+        The simulation output.
+    '''
+    # Load in 3 copies of the E. coli model
+    model_ecoli1 = cobra.io.read_sbml_model('e_coli_core1.xml')
+    model_ecoli2 = cobra.io.read_sbml_model('e_coli_core2.xml')
+
+    # Create COMETS models, set the uptake rate for one of the models to be lower
+    ecoli1 = c.model(model_ecoli1)
+    ecoli1.id='ecoli1'
+    ecoli2 = c.model(model_ecoli2)
+    ecoli2.id='ecoli2'
+    ecoli2.change_vmax('EX_ac_e',0.0001)
+
+    # Make sure the lower bounds of the uptakes are not zero
+    ecoli1.change_bounds('EX_glc__D_e', -1000, 1000)
+    ecoli1.change_bounds('EX_ac_e', -1000, 1000)
+
+    ecoli2.change_bounds('EX_glc__D_e', -1000, 1000)
+    ecoli2.change_bounds('EX_ac_e', -1000, 1000)
+    
+    # Set the settings
+    comets_config = {'time_step': 0.03,
+                     'dimensions': [30,30],
+                     'models': [ecoli1, ecoli2],
+                     'metabolite_ids': [met.id for met in model_ecoli1.metabolites]} # This only works because all the models have the same metabolites
+
+    # Set up an empty grid for the biomass
+    initial_biomass = [[{} for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
+
+    # Fill in the biomass grid with the initial biomass
+    initial_biomass[15][25]['ecoli1'] = 1e-6
+    initial_biomass[15][4]['ecoli1'] = 1e-6
+
+    # Make a dictionary of the initial metabolites
+    met_in_one_cell = {'glc__D_e': 0.00005,
+                        'o2_e': 1000,
+                        'nh4_e': 1000,
+                        'pi_e': 1000,
+                        'h2o_e': 1000,
+                        'h_e': 1000
+                    }
+    # Make a grid of the initial metabolites
+    initial_metabolites = [[met_in_one_cell for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
+
+    # Declare the initial state, mirroring the ports structure
+    comets_initial_state = {
+        'Biomass': {'biomass_grid': initial_biomass},
+        'Metabolites': {'metabolite_grid': initial_metabolites}
+    }
+
+    # Initialize the process
+    comets_process = Comets(comets_config)
+
+    # Make the experiment
+    comets_exp = Engine(processes={'comets': comets_process},
+                    topology={
+                        'comets': {'Biomass': ('Biomass',),
+                                   'Metabolites': ('Metabolites',)}},
+                   initial_state = comets_initial_state)
+
+    # Run the simulation
+    comets_exp.update(30.0)
 
     return comets_exp
 
