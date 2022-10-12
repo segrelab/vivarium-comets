@@ -100,13 +100,18 @@ class Comets(Process):
         # Create empty layout from dimensions
         layout = c.layout()
         layout.grid = self.parameters.dimensions
-        
-        # Add all the metabolites
-        # FIXME: How to set the metabolites in a specific grid cell?
-        # Kludge- loop through all the metabolites and set specific, only if greater than 0
-        for met_id in metabolites:
-            if metabolites[met_id] > 0:
-                layout.set_specific_metabolite(met_id, metabolites[met_id])
+
+        # Loop through the metabolite grid and set the metabolite for each cell
+        for i in range(len(metabolites)):
+            # Flip the row index so that the bottom left is (0,0)
+            row = len(metabolites) - i - 1
+            for j in range(len(metabolites[i])):
+                # Loop through the metabolites in the cell
+                for met_id in metabolites[i][j]:
+                    # If the metabolite is greater than 0, set it
+                    if metabolites[i][j][met_id] > 0:
+                        layout.set_specific_metabolite_at_location(met_id, [i, row], metabolites[i][j][met_id])
+
 
         # Set the models' initial biomass and add it to the layout
         for model in self.parameters['models']:
@@ -257,12 +262,13 @@ def run_comets_process_2D():
                      'models': [ecoli1, ecoli2],
                      'metabolite_ids': [met.id for met in model_ecoli1.metabolites]} # This only works because all the models have the same metabolites
 
-    # Set up an empty grid for the biomass
-    initial_biomass = [[{} for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
+    # Set up an empty grid for the biomass with a dictionary of 0s in each
+    biomass_in_one_cell = {'ecoli1': 0.0, 'ecoli2': 0.0}
+    initial_biomass = [[biomass_in_one_cell for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
 
     # Fill in the biomass grid with the initial biomass
     initial_biomass[15][25]['ecoli1'] = 1e-6
-    initial_biomass[15][4]['ecoli1'] = 1e-6
+    initial_biomass[15][4]['ecoli2'] = 1e-6
 
     # Make a dictionary of the initial metabolites
     met_in_one_cell = {'glc__D_e': 0.00005,
