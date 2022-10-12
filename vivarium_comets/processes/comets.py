@@ -99,7 +99,10 @@ class Comets(Process):
         ##################################################################
         # Create empty layout from dimensions
         layout = c.layout()
-        layout.grid = self.parameters.dimensions
+        layout.grid = self.parameters['dimensions']
+
+        # Set all the exchanged metabolites
+        layout.all_exchanged_mets = [met_id for met_id in self.parameters['metabolite_ids']]
 
         # Loop through the metabolite grid and set the metabolite for each cell
         for i in range(len(metabolites)):
@@ -110,7 +113,7 @@ class Comets(Process):
                 for met_id in metabolites[i][j]:
                     # If the metabolite is greater than 0, set it
                     if metabolites[i][j][met_id] > 0:
-                        layout.set_specific_metabolite_at_location(met_id, [i, row], metabolites[i][j][met_id])
+                        layout.set_specific_metabolite_at_location(met_id, (i, row), metabolites[i][j][met_id])
 
 
         # Set the models' initial biomass and add it to the layout
@@ -264,7 +267,7 @@ def run_comets_process_2D():
 
     # Set up an empty grid for the biomass with a dictionary of 0s in each
     biomass_in_one_cell = {'ecoli1': 0.0, 'ecoli2': 0.0}
-    initial_biomass = [[biomass_in_one_cell for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
+    initial_biomass = [[biomass_in_one_cell.copy() for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
 
     # Fill in the biomass grid with the initial biomass
     initial_biomass[15][25]['ecoli1'] = 1e-6
@@ -279,7 +282,7 @@ def run_comets_process_2D():
                         'h_e': 1000
                     }
     # Make a grid of the initial metabolites
-    initial_metabolites = [[met_in_one_cell for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
+    initial_metabolites = [[met_in_one_cell.copy() for i in range(comets_config['dimensions'][0])] for j in range(comets_config['dimensions'][1])]
 
     # Declare the initial state, mirroring the ports structure
     comets_initial_state = {
@@ -322,7 +325,7 @@ def main():
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    comets_exp = run_comets_process()
+    comets_exp = run_comets_process_2D()
 
     # retrieve the data as a timeseries
     comets_output = comets_exp.emitter.get_timeseries()
