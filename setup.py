@@ -7,22 +7,21 @@ with open("README.md", 'r') as readme:
     long_description = readme.read()
 
 setup(
-    name='',  # TODO: Put your package name here.
+    name='vivarium-comets',
     version='0.0.1',
     packages=[
-        # TODO: Replace 'template' with the name of your folder.
-        'template',
-        'template.processes',
-        'template.composites',
-        'template.experiments',
+        'vivarium_comets',
+        'vivarium_comets.processes',
+        'vivarium_comets.composites',
+        'vivarium_comets.experiments',
     ],
-    author='',  # TODO: Put your name here.
-    author_email='',  # TODO: Put your email here.
-    url='',  # TODO: Put your project URL here.
-    license='',  # TODO: Choose a license.
+    author='Helen Scott',
+    author_email='hscott@bu.edu',
+    url='https://github.com/segrelab/vivarium-comets',
+    license='MIT',
     entry_points={
         'console_scripts': []},
-    short_description='',  # TODO: Describe your project briefely.
+    short_description='a vivarium wrapper for COMETSpy',
     long_description=long_description,
     long_description_content_type='text/markdown',
     package_data={},
